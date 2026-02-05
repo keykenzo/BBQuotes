@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct FetchView: View {
-    let viewModel = ViewModel()
+    let vm = ViewModel()
     let show: String
     
     @State var showCharacterInfo = false
@@ -24,13 +24,13 @@ struct FetchView: View {
                     VStack {
                         Spacer(minLength: 60)
                         
-                        switch viewModel.status {
+                        switch vm.status {
                         case .notStarted:
                             EmptyView()
                         case .fetching:
                             ProgressView()
                         case .successQuote:
-                            Text("\"\(viewModel.quote.quote)\"")
+                            Text("\"\(vm.quote.quote)\"")
                                 .minimumScaleFactor(0.5)
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(.white)
@@ -40,29 +40,61 @@ struct FetchView: View {
                                 .padding(.horizontal)
                             
                             ZStack(alignment: .bottom) {
-                                AsyncImage(url: viewModel.character.images[0]) { image in
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-                                } placeholder: {
+                                if let url = vm.character.images.first {
+                                    AsyncImage(url: url) { phase in
+                                        switch phase {
+                                        case .empty:
+                                            ZStack {
+                                                Color.gray.opacity(0.3)
+                                                ProgressView()
+                                                    .tint(.white)
+                                                    .scaleEffect(1.3)
+                                            }
+                                            
+                                        case .success(let image):
+                                            image
+                                                .resizable()
+                                                .scaledToFill()
+                                            
+                                        case .failure:
+                                            VStack(spacing: 8) {
+                                                Image(systemName: "photo")
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .frame(width: 60, height: 60)
+                                                    .foregroundStyle(.gray)
+                                                Text("Imagem não disponível")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.gray)
+                                            }
+                                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                            .background(Color.gray.opacity(0.2))
+                                            
+                                        @unknown default:
+                                            EmptyView()
+                                        }
+                                    }
+                                    
+                                    Text(vm.quote.character)
+                                        .foregroundStyle(.white)
+                                        .padding(10)
+                                        .frame(maxWidth: .infinity)
+                                        .background(.ultraThinMaterial)
+                                } else {
+                                    // Sem imagens ou array vazio
                                     ProgressView()
+                                        .tint(.white)
+                                        .scaleEffect(1.5)
                                 }
-                                .frame(width: geometry.size.width / 1.1, height: geometry.size.height / 1.8)
-                                
-                                Text(viewModel.quote.character)
-                                    .foregroundStyle(.white)
-                                    .padding(10)
-                                    .frame(maxWidth: .infinity)
-                                    .background(.ultraThinMaterial)
                             }
-                            .frame(width: geometry.size.width / 1.1, height: geometry.size.height / 1.8)
+                            .frame(width: geometry.size.width / 1.1, height: geometry.size.height / 1.7)
                             .clipShape(.rect(cornerRadius: 50))
                             .onTapGesture {
                                 showCharacterInfo.toggle()
                             }
                             
                         case .successEpisode:
-                            EpisodeView(episode: viewModel.episode)
+                            EpisodeView(episode: vm.episode)
                             
                         case .failure(let error):
                             Text("Error: \(error.localizedDescription)")
@@ -79,7 +111,7 @@ struct FetchView: View {
                     HStack {
                         Button {
                             Task {
-                                await viewModel.getQuoteData(for: show)
+                                await vm.getQuoteData(for: show)
                             }
                         } label: {
                             Text("Get Random Quote")
@@ -95,7 +127,7 @@ struct FetchView: View {
                         
                         Button {
                             Task {
-                                await viewModel.getEpisodeData(for: show)
+                                await vm.getEpisodeData(for: show)
                             }
                         } label: {
                             Text("Get Random Episode")
@@ -117,7 +149,10 @@ struct FetchView: View {
         }
         .ignoresSafeArea()
         .sheet(isPresented: $showCharacterInfo) {
-            CharacterView(character: viewModel.character, show: show)
+            CharacterView(character: vm.character, show: show)
+        }
+        .task {
+            await vm.getQuoteData(for: show)
         }
     }
 }
