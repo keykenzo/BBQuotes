@@ -24,7 +24,7 @@ Here you can see the app in action:
 
 > [!TIP]
 > <p align="left">
-> <p><img src="BBQuotes/Screenshots/presentation.gif" width="200"></p>
+> <img src="BBQuotes/Screenshots/presentation.gif" width="200"></p>
 
 ## ✨ Features
 
